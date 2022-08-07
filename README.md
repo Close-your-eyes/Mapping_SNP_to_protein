@@ -81,3 +81,5 @@ igsc::MultiplePairwiseAlignmentsToOneSubject(subject = cds_man_minus,
 ```
 
 ![](README_files/figure-gfm/plot%20exons%20against%20genomic%20seq%20and%20cds-3.png)<!-- -->
+![alt
+text](20220806_snp_to_protein_fcmr_files/figure-html/plot%20exons%20against%20genomic%20seq%20and%20cds-1.png)

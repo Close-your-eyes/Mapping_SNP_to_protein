@@ -4,7 +4,7 @@ author: "Christopher Skopnik"
 date: '2022-08-05'
 output: html_document
 ---
-
+## Recommendations of how to improve this procedure are welcome.
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 knitr::read_chunk("snp_to_protein.R")
@@ -21,14 +21,14 @@ Data for FCMR are acquired manually and with biomaRt. The latter just to demonst
 ```
 
 This kind of plotting is a sanity check to make sure that we know which sequences we have in our variables.
-```{r plot exons against genomic seq and cds, fig.width=9, fig.height=5, warning=F, cache=T}
+```{r plot exons against genomic seq and cds, fig.width=9, fig.height=3.5, warning=F, cache=T}
 ```
 
 ```{r get genomic and exon data for FCMR with bioMart, warning=F, cache=T}
 ```
 
 Again a sanity check.
-```{r plot exons against genomic seq and cds 2, fig.width=9, fig.height=5, warning=F, cache=T}
+```{r plot exons against genomic seq and cds 2, fig.width=9, fig.height=3.5, warning=F, cache=T}
 ```
 
 The pairwise alignments of exons against the genomic sequence allows us to map genomic snp position to mRNA levels and subsequently to protein level.
@@ -40,7 +40,7 @@ Acquisition of snp data from NCBI via R. This is probably also possible with bio
 ```
 
 Align coding sequence (cds) to exons to find its boundaries.
-```{r align cds to exons,cache=T}
+```{r align cds to exons,cache=T, fig.width=9, fig.height=3.5}
 ```
 
 ```{r create a data frame with one row for each exonic nucleotide,cache=T}

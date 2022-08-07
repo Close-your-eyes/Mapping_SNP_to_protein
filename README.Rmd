@@ -18,6 +18,8 @@ Data for FCMR are acquired manually and with biomaRt. The latter just to demonst
 ```
 
 This kind of plotting is a sanity check to make sure that we know which sequences we have in our variables.
-```{r plot exons against genomic seq and cds, fig.width=9, fig.height=3.5, warning=F, cache=T}
+```{r plot exons against genomic seq and cds, fig.width=9, fig.height=3.5, warning=F, eval=F}
 ```
 ![alt text](20220806_snp_to_protein_fcmr_files/figure-html/plot exons against genomic seq and cds-1.png)
+![alt text](20220806_snp_to_protein_fcmr_files/figure-html/plot exons against genomic seq and cds-2.png)
+![alt text](20220806_snp_to_protein_fcmr_files/figure-html/plot exons against genomic seq and cds-3.png)

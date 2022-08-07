@@ -40,8 +40,12 @@ Acquisition of snp data from NCBI via R. This is probably also possible with bio
 ```
 
 Align coding sequence (cds) to exons to find its boundaries.
-```{r align cds to exons,cache=T, fig.width=9, fig.height=3.5}
+```{r align cds to exons,cache=T}
 ```
+```{r align cds to exons plot,cache=T, fig.width=9, fig.height=3.5}
+```
+
+
 
 ```{r create a data frame with one row for each exonic nucleotide,cache=T}
 ```

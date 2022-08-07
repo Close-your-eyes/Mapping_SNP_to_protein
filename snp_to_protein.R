@@ -147,8 +147,9 @@ head(ncbi_snps_df,10)
 # align cds to exons
 # exons have more nts as they also comprise UTRs
 # used alignment below to identify where cds starts
-cds_exon_al <- Biostrings::pairwiseAlignment(pattern = cds_man_minus, subject = do.call(Biostrings::xscat, exons_man_minus), type = "local")
-igsc::MultiplePairwiseAlignmentsToOneSubject(patterns = cds_man_minus, subject = do.call(Biostrings::xscat, exons_man_minus), type = "local")[["match.plot"]]
+cds_exon_al <- Biostrings::pairwiseAlignment(pattern = cds_man_minus, subject = do.call(Biostrings::xscat, as.list(exons_man_minus)), type = "local")
+## ---- align cds to exons plot -------------
+igsc::MultiplePairwiseAlignmentsToOneSubject(patterns = cds_man_minus, subject = do.call(Biostrings::xscat, as.list(exons_man_minus)), type = "local")[["match.plot"]]
 
 ## ---- create a data frame with one row for each exonic nucleotide --------
 # create a data frame with one row for each exonic nucleotide
@@ -188,7 +189,7 @@ fcmr_prot[1:5]
 
 ## ---- exclude snps which cause a silent mutation ---------
 # exclude snps which cause a silent mutation
-cds_aa_range <- Biostrings::translate(DNAStringSet(cds_man_minus))[[1]][range]
+cds_aa_range <- Biostrings::translate(Biostrings::DNAStringSet(cds_man_minus))[[1]][range]
 fcmr_prot2 <- lapply(fcmr_prot, function(x) {
   if (as.character(x) == as.character(cds_aa_range)) {
     return(NULL)

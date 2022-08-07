@@ -23,3 +23,48 @@ This kind of plotting is a sanity check to make sure that we know which sequence
 ![alt text](20220806_snp_to_protein_fcmr_files/figure-html/plot exons against genomic seq and cds-1.png)
 ![alt text](20220806_snp_to_protein_fcmr_files/figure-html/plot exons against genomic seq and cds-2.png)
 ![alt text](20220806_snp_to_protein_fcmr_files/figure-html/plot exons against genomic seq and cds-3.png)
+
+
+```{r get genomic and exon data for FCMR with bioMart, warning=F, cache=T}
+```
+
+Again a sanity check.
+```{r plot exons against genomic seq and cds 2, fig.width=9, fig.height=3.5, warning=F, eval=F}
+```
+![alt text](20220806_snp_to_protein_fcmr_files/figure-html/get genomic and exon data for FCMR with bioMart-1.png)
+![alt text](20220806_snp_to_protein_fcmr_files/figure-html/get genomic and exon data for FCMR with bioMart-2.png)
+![alt text](20220806_snp_to_protein_fcmr_files/figure-html/get genomic and exon data for FCMR with bioMart-3.png)
+![alt text](20220806_snp_to_protein_fcmr_files/figure-html/get genomic and exon data for FCMR with bioMart-4.png)
+
+The pairwise alignments of exons against the genomic sequence allows us to map genomic snp position to mRNA levels and subsequently to protein level.
+```{r get genomic start and end positions for each exon,cache=T}
+```
+
+Acquisition of snp data from NCBI via R. This is probably also possible with biomaRt.
+```{r get snp data,cache=T}
+```
+
+Align coding sequence (cds) to exons to find its boundaries.
+```{r align cds to exons,cache=T}
+```
+
+```{r align cds to exons plot,cache=F, fig.width=9, fig.height=3.5,eval=F}
+```
+
+```{r create a data frame with one row for each exonic nucleotide,cache=T}
+```
+
+We just inspect snps within the first 30 aa of FCMR. This is totally arbitrary.
+```{r translate snps to their effect on protein level,cache=T}
+```
+
+```{r exclude snps which cause a silent mutation,cache=T}
+```
+
+```{r mutiple alignment of proteins with snps and plot,cache=T,message=F,fig.width=9, eval=F}
+```
+![alt text](20220806_snp_to_protein_fcmr_files/figure-html/mutiple alignment of proteins with snps and plot-1.png)
+
+
+
+

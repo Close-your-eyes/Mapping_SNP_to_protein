@@ -128,10 +128,6 @@ ncbi_snps <- parallel::mclapply(fcmr_snps, function(x) {
   })
 }, mc.cores = 32)
 
-#attr <- biomaRt::listAttributes(mart)
-#marts <- biomaRt::listMarts()
-#snps <- biomaRt::getBM( attributes=c("snp_chromosome_strand","chr_name","chrom_start"),filters=c("chr_name","chrom_start","chrom_end"), values=list(c(1),c(fcmr_start_gen), c(fcmr_end_gen)), mart)
-
 # make a data frame; filter for snv* only; filter for snps within exons only
 # *snv = single nucleotide variant
 # https://stackoverflow.com/questions/15917233/elegant-way-to-vectorize-seq
@@ -204,17 +200,17 @@ fcmr_prot2 <- c(list(cds_aa_range), fcmr_prot2)
 names(fcmr_prot2)[1] <- "cds"
 
 ## ---- mutiple alignment of proteins with snps and plot -------------
-# mutiple alignment of proteins with snps and plot
+# create a mutiple alignment of proteins which have non-silent snps incorporated (snv only, see above)
 fcmr_prot2_mult_aln <- DECIPHER::AlignSeqs(Biostrings::AAStringSet(fcmr_prot2), verbose = F)
 names(fcmr_prot2_mult_aln) <- make.unique(names(fcmr_prot2_mult_aln))
 
 # print in easy-to-read-format like with printPairwiseAlignment
 # http://emboss.sourceforge.net/docs/themes/AlignFormats.html
 
-# or use DECIPHER (which opens the browser)
+# or use DECIPHER (which opens the browser); this looks nicer and allows scrolling but cannot produce a figure
 # DECIPHER::BrowseSeqs(fcmr_prot2_mult_aln, highlight = 1)
 
-# or use ggmsa to get a ggplot2 object; note: stop-codons are plotted as empty positions (not so nice currently; DECIPHER plots asterisk (*))
+# or use ggmsa to get a ggplot2 object; note: stop-codons are plotted as empty positions (not so nice currently; DECIPHER plots asterisk (*) for stop-codons)
 ggmsa::ggmsa(msa = fcmr_prot2_mult_aln,
              seq_name = T,
              consensus_views = T,

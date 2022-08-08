@@ -32,8 +32,9 @@ chemical properties, etc.).
 Below snps within exons of FCMR (FAIM3, Toso), the human Fc receptor for
 IgM, are mapped to protein level and their effects are plotted in a
 multiple alignment.  
-Data for FCMR are acquired manually and with biomaRt. The latter just to
-demonstrate that doing this job purely from R is feasible.
+Data for FCMR are acquired manually and with biomaRt. The latter is
+included to demonstrate that doing this job purely from R is feasible,
+though manual verification is advisable.
 
 ``` r
 ## manual data acquisition from NCBI and UCSC
@@ -110,7 +111,7 @@ cds_mart <- biomaRt::getSequence(id = "ENST00000367091", #.8
 cds_mart <- Biostrings::DNAStringSet(stats::setNames(cds_mart$coding, "cds_mart"))
 ```
 
-Again a sanity check.
+Again a sanity check for data from biomaRt.
 
 ``` r
 # plot genomic seq from manual gathering and bioMart query against each other
@@ -141,9 +142,10 @@ text](20220806_snp_to_protein_fcmr_files/figure-html/get%20genomic%20and%20exon%
 ![alt
 text](20220806_snp_to_protein_fcmr_files/figure-html/get%20genomic%20and%20exon%20data%20for%20FCMR%20with%20bioMart-4.png)
 
-The pairwise alignments of exons against the genomic sequence allows us
-to map genomic snp position to mRNA levels and subsequently to protein
-level.
+The pairwise alignments of exons against the genomic sequence matches
+genomic coordinates to nucleotide positions in exons (or vice versa).
+Subsequently, this enables us to map genomic snp position to mRNA and
+protein level.
 
 ``` r
 # get genomic start and end positions for each exon by aligning exons to DNA minus strand
@@ -186,10 +188,6 @@ ncbi_snps <- parallel::mclapply(fcmr_snps, function(x) {
     NULL
   })
 }, mc.cores = 32)
-
-#attr <- biomaRt::listAttributes(mart)
-#marts <- biomaRt::listMarts()
-#snps <- biomaRt::getBM( attributes=c("snp_chromosome_strand","chr_name","chrom_start"),filters=c("chr_name","chrom_start","chrom_end"), values=list(c(1),c(fcmr_start_gen), c(fcmr_end_gen)), mart)
 
 # make a data frame; filter for snv* only; filter for snps within exons only
 # *snv = single nucleotide variant
@@ -258,7 +256,7 @@ head(df_exon_gen_pos,10)
     ## 10 ref|NM_005449.5|:1-124  A 206921932      10 FALSE
 
 We just inspect snps within the first 30 aa of FCMR. This is totally
-arbitrary.
+arbitrary and yields simple plot in the end.
 
 ``` r
 # translate snps to their effect on protein level
@@ -306,6 +304,9 @@ fcmr_prot[1:5]
     ## 30-letter AAString object
     ## seq: MDFWLWPLYFLPVSGALRILPEVKVEGELG
 
+Silent mutations, so when a snp does not change the amino acid, are
+excluded.
+
 ``` r
 # exclude snps which cause a silent mutation
 cds_aa_range <- Biostrings::translate(Biostrings::DNAStringSet(cds_man_minus))[[1]][range]
@@ -324,17 +325,17 @@ names(fcmr_prot2)[1] <- "cds"
 ```
 
 ``` r
-# mutiple alignment of proteins with snps and plot
+# create a mutiple alignment of proteins which have non-silent snps incorporated (snv only, see above)
 fcmr_prot2_mult_aln <- DECIPHER::AlignSeqs(Biostrings::AAStringSet(fcmr_prot2), verbose = F)
 names(fcmr_prot2_mult_aln) <- make.unique(names(fcmr_prot2_mult_aln))
 
 # print in easy-to-read-format like with printPairwiseAlignment
 # http://emboss.sourceforge.net/docs/themes/AlignFormats.html
 
-# or use DECIPHER (which opens the browser)
+# or use DECIPHER (which opens the browser); this looks nicer and allows scrolling but cannot produce a figure
 # DECIPHER::BrowseSeqs(fcmr_prot2_mult_aln, highlight = 1)
 
-# or use ggmsa to get a ggplot2 object; note: stop-codons are plotted as empty positions (not so nice currently; DECIPHER plots asterisk (*))
+# or use ggmsa to get a ggplot2 object; note: stop-codons are plotted as empty positions (not so nice currently; DECIPHER plots asterisk (*) for stop-codons)
 ggmsa::ggmsa(msa = fcmr_prot2_mult_aln,
              seq_name = T,
              consensus_views = T,

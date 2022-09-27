@@ -126,7 +126,13 @@ ncbi_snps <- parallel::mclapply(fcmr_snps, function(x) {
     }, error = function(e) {
         NULL
     })
+<<<<<<< HEAD
 }, mc.cores = 32)
+=======
+}, mc.cores = 16)
+#saveRDS(ncbi_snps, file.path(getwd(), "ncbi_snps.RDS"))
+#ncbi_snps <- readRDS(file.path(getwd(), "ncbi_snps.RDS"))
+>>>>>>> c21779332bbe2b41c16da63def038d361a828c3c
 
 # make a data frame; filter for snv* only; filter for snps within exons only
 # *snv = single nucleotide variant
@@ -172,12 +178,12 @@ fcmr_prot <- lapply(1:nrow(ncbi_snps_df), function(y) {
 
     protein_with_snp <- lapply(strsplit(ncbi_snps_df[y,"variation_allele",drop=T], ",")[[1]], function(x) {
         df_exon_gen_pos[which(df_exon_gen_pos$gen_pos == bp),"nt"] <- as.character(Biostrings::complement(Biostrings::DNAString(x)))
-        Biostrings::translate(Biostrings::DNAString(paste0(df_exon_gen_pos[which(df_exon_gen_pos$cds),"nt"], collapse = "")))[range]
+        Biostrings::translate(Biostrings::DNAString(paste0(df_exon_gen_pos[which(df_exon_gen_pos$cds),"nt"], collapse = "")))#[range]
     })
-    names(protein_with_snp) <- rep(ncbi_snps_df[y,"rsid"], length(protein_with_snp))
+    names(protein_with_snp) <- paste0(ncbi_snps_df[y,"rsid"], "_", strsplit(ncbi_snps_df[y,"variation_allele",drop=T], ",")[[1]])
     return(protein_with_snp)
 })
-names(fcmr_prot) <- ncbi_snps_df$rsid
+#names(fcmr_prot) <- ncbi_snps_df$rsid
 fcmr_prot <- purrr::flatten(fcmr_prot)
 # fcmr_prot is a list of protein sequences with modification according to the snp
 # so one list entry for each snv-snp with exons
@@ -185,7 +191,7 @@ fcmr_prot[1:5]
 
 ## ---- exclude snps which cause a silent mutation ---------
 # exclude snps which cause a silent mutation
-cds_aa_range <- Biostrings::translate(Biostrings::DNAStringSet(cds_man_minus))[[1]][range]
+cds_aa_range <- Biostrings::translate(Biostrings::DNAStringSet(cds_man_minus))[[1]]#[range]
 fcmr_prot2 <- lapply(fcmr_prot, function(x) {
     if (as.character(x) == as.character(cds_aa_range)) {
         return(NULL)
@@ -217,4 +223,65 @@ gg_aln <- ggmsa::ggmsa(msa = fcmr_prot2_mult_aln,
                        ref = "cds",
                        use_dot = T)
 
+## manual ggplotting
+library(ggplot2)
+out3 <- purrr::map(as.list(fcmr_prot2_mult_aln), as.character)
+out4 <- purrr::flatten(purrr::map(out3, strsplit, split = ""))
+out5 <- purrr::map_dfr(out4, function(x) {
+    stack(setNames(x, seq(1, length(x))))
+}, .id = "rsid")
+out6 <-
+    out5 %>%
+    tidyr::pivot_wider(names_from = rsid, values_from = values) %>%
+    dplyr::mutate(dplyr::across(.cols = unique(out5$rsid)[which(unique(out5$rsid) != "cds")],
+                                .fns = ~ ifelse(.x == cds, ".", .x))) %>%
+    tidyr::pivot_longer(cols = unique(out5$rsid), names_to = "rsid", values_to = "aa") %>%
+    dplyr::mutate(rsid = factor(rsid, levels = unique(out5$rsid)))
 
+
+AA_cols <- setNames(ggmsa:::scheme_AA$Chemistry_AA, rownames(ggmsa:::scheme_AA))
+AA_cols <- c(AA_cols, "*" = "grey80")
+p <- ggplot(out6, aes(x = ind, y = rsid, label = aa)) +
+    geom_tile(aes(fill = aa), color = "black") +
+    theme_bw() +
+    theme(axis.title = element_blank(), legend.position = "none", panel.border = element_blank(),
+          axis.ticks = element_blank()) +
+    geom_text() +
+    scale_x_discrete(breaks = c(10,20,30)) +
+    scale_y_discrete(limits = rev) +
+    scale_fill_manual(values = AA_cols, na.value = "white") +
+    coord_fixed(ratio = nlevels(out6$ind)/nlevels(out6$rsid)*0.8)
+#ggsave(p, filename = paste0("alignment_30aa.png"), device = "png", path = getwd(), dpi = "retina", width = 5*nlevels(out6$ind)/nlevels(out6$rsid)*0.8, height = 5)
+ggsave(p, filename = paste0("alignment_all_aa.png"), device = "png", path = getwd(), dpi = "retina", width = 30*nlevels(out6$ind)/nlevels(out6$rsid)*0.8, height = 30)
+
+
+
+## ---- for github (ggmsa only) -------
+aln <- DECIPHER::AlignSeqs(Biostrings::AAStringSet(named_protein_chr_vector), verbose = F)
+out <- purrr::map(as.list(aln), as.character)
+out <- purrr::flatten(purrr::map(out, strsplit, split = ""))
+out <- purrr::map_dfr(out, function(x) {
+    stack(setNames(x, seq(1, length(x))))
+}, .id = "protein_name")
+
+ref_protein_name <- "ref"
+out <-
+    out %>%
+    tidyr::pivot_wider(names_from = protein_name, values_from = values) %>%
+    dplyr::mutate(dplyr::across(.cols = unique(out$protein_name)[which(unique(out$protein_name) != ref_protein_name)],
+                                .fns = ~ ifelse(.x == !!sym(ref_protein_name), ".", .x))) %>%
+    tidyr::pivot_longer(cols = unique(out$protein_name), names_to = "protein_name", values_to = "aa") %>%
+    dplyr::mutate(protein_name = factor(protein_name, levels = unique(out$protein_name)))
+
+AA_cols <- setNames(ggmsa:::scheme_AA$Chemistry_AA, rownames(ggmsa:::scheme_AA))
+AA_cols <- c(AA_cols, "*" = "grey80")
+p <- ggplot(out, aes(x = ind, y = protein_name, label = aa)) +
+    geom_tile(aes(fill = aa), color = "black") +
+    theme_bw() +
+    theme(axis.title = element_blank(), legend.position = "none", panel.border = element_blank(),
+          axis.ticks = element_blank()) +
+    geom_text() +
+    scale_x_discrete(breaks = c(10,20,30)) +
+    scale_y_discrete(limits = rev) +
+    scale_fill_manual(values = AA_cols, na.value = "white") +
+    coord_fixed(ratio = nlevels(out$ind)/nlevels(out$protein_name)*0.8)

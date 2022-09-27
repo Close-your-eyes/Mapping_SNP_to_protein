@@ -103,13 +103,13 @@ igsc::MultiplePairwiseAlignmentsToOneSubject(subject = cds_mart,
 ## ---- get genomic start and end positions for each exon -------------
 # get genomic start and end positions for each exon by aligning exons to DNA minus strand
 exon_in_genome <- purrr::map_df(.x = as.character(exons_man_minus), .id = "exon", .f = function(x) {
-  pa <- Biostrings::pairwiseAlignment(subject = gen_man_minus,
-                                      pattern = x,
-                                      type = "local")
-  data.frame(start_al = pa@subject@range@start,
-             end_al = pa@subject@range@start + pa@subject@range@width - 1,
-             start_genome = fcmr_start_gen - pa@subject@range@start + 1,
-             end_genome = fcmr_start_gen - (pa@subject@range@start + pa@subject@range@width - 1) + 1)
+    pa <- Biostrings::pairwiseAlignment(subject = gen_man_minus,
+                                        pattern = x,
+                                        type = "local")
+    data.frame(start_al = pa@subject@range@start,
+               end_al = pa@subject@range@start + pa@subject@range@width - 1,
+               start_genome = fcmr_start_gen - pa@subject@range@start + 1,
+               end_genome = fcmr_start_gen - (pa@subject@range@start + pa@subject@range@width - 1) + 1)
 })
 exon_in_genome
 
@@ -120,12 +120,12 @@ fcmr_snps <- snp_links[["links"]][["gene_snp"]]
 
 # get details for each snp
 ncbi_snps <- parallel::mclapply(fcmr_snps, function(x) {
-  tryCatch({
-    # pulls from assembly 38
-    rsnps::ncbi_snp_query(paste0("rs", x))
-  }, error = function(e) {
-    NULL
-  })
+    tryCatch({
+        # pulls from assembly 38
+        rsnps::ncbi_snp_query(paste0("rs", x))
+    }, error = function(e) {
+        NULL
+    })
 }, mc.cores = 32)
 
 # make a data frame; filter for snv* only; filter for snps within exons only
@@ -133,10 +133,10 @@ ncbi_snps <- parallel::mclapply(fcmr_snps, function(x) {
 # https://stackoverflow.com/questions/15917233/elegant-way-to-vectorize-seq
 seq2 <- Vectorize(seq.default, vectorize.args = c("from", "to"))
 ncbi_snps_df <-
-  dplyr::bind_rows(ncbi_snps) %>%
-  dplyr::filter(bp %in% unlist(seq2(exon_in_genome[,"end_genome"], exon_in_genome[,"start_genome"]))) %>%
-  dplyr::filter(class == "snv") %>%
-  dplyr::arrange(-bp)
+    dplyr::bind_rows(ncbi_snps) %>%
+    dplyr::filter(bp %in% unlist(seq2(exon_in_genome[,"end_genome"], exon_in_genome[,"start_genome"]))) %>%
+    dplyr::filter(class == "snv") %>%
+    dplyr::arrange(-bp)
 head(ncbi_snps_df,10)
 
 ## ---- align cds to exons -------------
@@ -150,32 +150,32 @@ igsc::MultiplePairwiseAlignmentsToOneSubject(patterns = cds_man_minus, subject =
 ## ---- create a data frame with one row for each exonic nucleotide --------
 # create a data frame with one row for each exonic nucleotide
 df_exon_gen_pos <- purrr::map_df(.x = names(exons_man_minus), .f = function(x) {
-  data.frame(exon = x,
-             nt = strsplit(as.character(exons_man_minus[[x]]), "")[[1]],
-             gen_pos = exon_in_genome[which(exon_in_genome$exon == x), "start_genome"]:exon_in_genome[which(exon_in_genome$exon == x), "end_genome"])
+    data.frame(exon = x,
+               nt = strsplit(as.character(exons_man_minus[[x]]), "")[[1]],
+               gen_pos = exon_in_genome[which(exon_in_genome$exon == x), "start_genome"]:exon_in_genome[which(exon_in_genome$exon == x), "end_genome"])
 }) %>%
-  dplyr::mutate(row_num = dplyr::row_number()) %>%
-  dplyr::mutate(cds = dplyr::between(row_num, cds_exon_al@subject@range@start, cds_exon_al@subject@range@start + cds_exon_al@subject@range@width - 1))
+    dplyr::mutate(row_num = dplyr::row_number()) %>%
+    dplyr::mutate(cds = dplyr::between(row_num, cds_exon_al@subject@range@start, cds_exon_al@subject@range@start + cds_exon_al@subject@range@width - 1))
 head(df_exon_gen_pos,10)
 
 ## ---- translate snps to their effect on protein level -------
 # translate snps to their effect on protein level
 range <- c(1:30) # arbitrary range of aa to consider below
 fcmr_prot <- lapply(1:nrow(ncbi_snps_df), function(y) {
-  bp <- ncbi_snps_df[y,"bp",drop=T]
+    bp <- ncbi_snps_df[y,"bp",drop=T]
 
-  if (as.character(Biostrings::complement(Biostrings::DNAString(ncbi_snps_df[y,"ancestral_allele",drop=T]))) != df_exon_gen_pos[which(df_exon_gen_pos$gen_pos == bp),"nt",drop=T]) {
-    # test if ancestral_allele from ncbi snp database matches the information in our data frame
-    # turn ncbi info into complement as they come from plus strand, but FCMR is on minus strand
-    stop("mismatch")
-  }
+    if (as.character(Biostrings::complement(Biostrings::DNAString(ncbi_snps_df[y,"ancestral_allele",drop=T]))) != df_exon_gen_pos[which(df_exon_gen_pos$gen_pos == bp),"nt",drop=T]) {
+        # test if ancestral_allele from ncbi snp database matches the information in our data frame
+        # turn ncbi info into complement as they come from plus strand, but FCMR is on minus strand
+        stop("mismatch")
+    }
 
-  protein_with_snp <- lapply(strsplit(ncbi_snps_df[y,"variation_allele",drop=T], ",")[[1]], function(x) {
-    df_exon_gen_pos[which(df_exon_gen_pos$gen_pos == bp),"nt"] <- as.character(Biostrings::complement(Biostrings::DNAString(x)))
-    Biostrings::translate(Biostrings::DNAString(paste0(df_exon_gen_pos[which(df_exon_gen_pos$cds),"nt"], collapse = "")))[range]
-  })
-  names(protein_with_snp) <- rep(ncbi_snps_df[y,"rsid"], length(protein_with_snp))
-  return(protein_with_snp)
+    protein_with_snp <- lapply(strsplit(ncbi_snps_df[y,"variation_allele",drop=T], ",")[[1]], function(x) {
+        df_exon_gen_pos[which(df_exon_gen_pos$gen_pos == bp),"nt"] <- as.character(Biostrings::complement(Biostrings::DNAString(x)))
+        Biostrings::translate(Biostrings::DNAString(paste0(df_exon_gen_pos[which(df_exon_gen_pos$cds),"nt"], collapse = "")))[range]
+    })
+    names(protein_with_snp) <- rep(ncbi_snps_df[y,"rsid"], length(protein_with_snp))
+    return(protein_with_snp)
 })
 names(fcmr_prot) <- ncbi_snps_df$rsid
 fcmr_prot <- purrr::flatten(fcmr_prot)
@@ -187,11 +187,11 @@ fcmr_prot[1:5]
 # exclude snps which cause a silent mutation
 cds_aa_range <- Biostrings::translate(Biostrings::DNAStringSet(cds_man_minus))[[1]][range]
 fcmr_prot2 <- lapply(fcmr_prot, function(x) {
-  if (as.character(x) == as.character(cds_aa_range)) {
-    return(NULL)
-  } else {
-    return(x)
-  }
+    if (as.character(x) == as.character(cds_aa_range)) {
+        return(NULL)
+    } else {
+        return(x)
+    }
 })
 fcmr_prot2 <- fcmr_prot2[which(!sapply(fcmr_prot2, is.null))]
 
@@ -211,10 +211,10 @@ names(fcmr_prot2_mult_aln) <- make.unique(names(fcmr_prot2_mult_aln))
 # DECIPHER::BrowseSeqs(fcmr_prot2_mult_aln, highlight = 1)
 
 # or use ggmsa to get a ggplot2 object; note: stop-codons are plotted as empty positions (not so nice currently; DECIPHER plots asterisk (*) for stop-codons)
-ggmsa::ggmsa(msa = fcmr_prot2_mult_aln,
-             seq_name = T,
-             consensus_views = T,
-             ref = "cds",
-             use_dot = T)
+gg_aln <- ggmsa::ggmsa(msa = fcmr_prot2_mult_aln,
+                       seq_name = T,
+                       consensus_views = T,
+                       ref = "cds",
+                       use_dot = T)
 
 

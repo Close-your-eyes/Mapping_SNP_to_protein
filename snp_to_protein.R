@@ -103,13 +103,13 @@ igsc::MultiplePairwiseAlignmentsToOneSubject(subject = cds_mart,
 ## ---- get genomic start and end positions for each exon -------------
 # get genomic start and end positions for each exon by aligning exons to DNA minus strand
 exon_in_genome <- purrr::map_df(.x = as.character(exons_man_minus), .id = "exon", .f = function(x) {
-  pa <- Biostrings::pairwiseAlignment(subject = gen_man_minus,
-                                      pattern = x,
-                                      type = "local")
-  data.frame(start_al = pa@subject@range@start,
-             end_al = pa@subject@range@start + pa@subject@range@width - 1,
-             start_genome = fcmr_start_gen - pa@subject@range@start + 1,
-             end_genome = fcmr_start_gen - (pa@subject@range@start + pa@subject@range@width - 1) + 1)
+    pa <- Biostrings::pairwiseAlignment(subject = gen_man_minus,
+                                        pattern = x,
+                                        type = "local")
+    data.frame(start_al = pa@subject@range@start,
+               end_al = pa@subject@range@start + pa@subject@range@width - 1,
+               start_genome = fcmr_start_gen - pa@subject@range@start + 1,
+               end_genome = fcmr_start_gen - (pa@subject@range@start + pa@subject@range@width - 1) + 1)
 })
 exon_in_genome
 
@@ -120,23 +120,25 @@ fcmr_snps <- snp_links[["links"]][["gene_snp"]]
 
 # get details for each snp
 ncbi_snps <- parallel::mclapply(fcmr_snps, function(x) {
-  tryCatch({
-    # pulls from assembly 38
-    rsnps::ncbi_snp_query(paste0("rs", x))
-  }, error = function(e) {
-    NULL
-  })
-}, mc.cores = 32)
+    tryCatch({
+        # pulls from assembly 38
+        rsnps::ncbi_snp_query(paste0("rs", x))
+    }, error = function(e) {
+        NULL
+    })
+}, mc.cores = 16)
+#saveRDS(ncbi_snps, file.path(getwd(), "ncbi_snps.RDS"))
+#ncbi_snps <- readRDS(file.path(getwd(), "ncbi_snps.RDS"))
 
 # make a data frame; filter for snv* only; filter for snps within exons only
 # *snv = single nucleotide variant
 # https://stackoverflow.com/questions/15917233/elegant-way-to-vectorize-seq
 seq2 <- Vectorize(seq.default, vectorize.args = c("from", "to"))
 ncbi_snps_df <-
-  dplyr::bind_rows(ncbi_snps) %>%
-  dplyr::filter(bp %in% unlist(seq2(exon_in_genome[,"end_genome"], exon_in_genome[,"start_genome"]))) %>%
-  dplyr::filter(class == "snv") %>%
-  dplyr::arrange(-bp)
+    dplyr::bind_rows(ncbi_snps) %>%
+    dplyr::filter(bp %in% unlist(seq2(exon_in_genome[,"end_genome"], exon_in_genome[,"start_genome"]))) %>%
+    dplyr::filter(class == "snv") %>%
+    dplyr::arrange(-bp)
 head(ncbi_snps_df,10)
 
 ## ---- align cds to exons -------------
@@ -150,34 +152,34 @@ igsc::MultiplePairwiseAlignmentsToOneSubject(patterns = cds_man_minus, subject =
 ## ---- create a data frame with one row for each exonic nucleotide --------
 # create a data frame with one row for each exonic nucleotide
 df_exon_gen_pos <- purrr::map_df(.x = names(exons_man_minus), .f = function(x) {
-  data.frame(exon = x,
-             nt = strsplit(as.character(exons_man_minus[[x]]), "")[[1]],
-             gen_pos = exon_in_genome[which(exon_in_genome$exon == x), "start_genome"]:exon_in_genome[which(exon_in_genome$exon == x), "end_genome"])
+    data.frame(exon = x,
+               nt = strsplit(as.character(exons_man_minus[[x]]), "")[[1]],
+               gen_pos = exon_in_genome[which(exon_in_genome$exon == x), "start_genome"]:exon_in_genome[which(exon_in_genome$exon == x), "end_genome"])
 }) %>%
-  dplyr::mutate(row_num = dplyr::row_number()) %>%
-  dplyr::mutate(cds = dplyr::between(row_num, cds_exon_al@subject@range@start, cds_exon_al@subject@range@start + cds_exon_al@subject@range@width - 1))
+    dplyr::mutate(row_num = dplyr::row_number()) %>%
+    dplyr::mutate(cds = dplyr::between(row_num, cds_exon_al@subject@range@start, cds_exon_al@subject@range@start + cds_exon_al@subject@range@width - 1))
 head(df_exon_gen_pos,10)
 
 ## ---- translate snps to their effect on protein level -------
 # translate snps to their effect on protein level
 range <- c(1:30) # arbitrary range of aa to consider below
 fcmr_prot <- lapply(1:nrow(ncbi_snps_df), function(y) {
-  bp <- ncbi_snps_df[y,"bp",drop=T]
+    bp <- ncbi_snps_df[y,"bp",drop=T]
 
-  if (as.character(Biostrings::complement(Biostrings::DNAString(ncbi_snps_df[y,"ancestral_allele",drop=T]))) != df_exon_gen_pos[which(df_exon_gen_pos$gen_pos == bp),"nt",drop=T]) {
-    # test if ancestral_allele from ncbi snp database matches the information in our data frame
-    # turn ncbi info into complement as they come from plus strand, but FCMR is on minus strand
-    stop("mismatch")
-  }
+    if (as.character(Biostrings::complement(Biostrings::DNAString(ncbi_snps_df[y,"ancestral_allele",drop=T]))) != df_exon_gen_pos[which(df_exon_gen_pos$gen_pos == bp),"nt",drop=T]) {
+        # test if ancestral_allele from ncbi snp database matches the information in our data frame
+        # turn ncbi info into complement as they come from plus strand, but FCMR is on minus strand
+        stop("mismatch")
+    }
 
-  protein_with_snp <- lapply(strsplit(ncbi_snps_df[y,"variation_allele",drop=T], ",")[[1]], function(x) {
-    df_exon_gen_pos[which(df_exon_gen_pos$gen_pos == bp),"nt"] <- as.character(Biostrings::complement(Biostrings::DNAString(x)))
-    Biostrings::translate(Biostrings::DNAString(paste0(df_exon_gen_pos[which(df_exon_gen_pos$cds),"nt"], collapse = "")))[range]
-  })
-  names(protein_with_snp) <- rep(ncbi_snps_df[y,"rsid"], length(protein_with_snp))
-  return(protein_with_snp)
+    protein_with_snp <- lapply(strsplit(ncbi_snps_df[y,"variation_allele",drop=T], ",")[[1]], function(x) {
+        df_exon_gen_pos[which(df_exon_gen_pos$gen_pos == bp),"nt"] <- as.character(Biostrings::complement(Biostrings::DNAString(x)))
+        Biostrings::translate(Biostrings::DNAString(paste0(df_exon_gen_pos[which(df_exon_gen_pos$cds),"nt"], collapse = "")))#[range]
+    })
+    names(protein_with_snp) <- paste0(ncbi_snps_df[y,"rsid"], "_", strsplit(ncbi_snps_df[y,"variation_allele",drop=T], ",")[[1]])
+    return(protein_with_snp)
 })
-names(fcmr_prot) <- ncbi_snps_df$rsid
+#names(fcmr_prot) <- ncbi_snps_df$rsid
 fcmr_prot <- purrr::flatten(fcmr_prot)
 # fcmr_prot is a list of protein sequences with modification according to the snp
 # so one list entry for each snv-snp with exons
@@ -185,13 +187,13 @@ fcmr_prot[1:5]
 
 ## ---- exclude snps which cause a silent mutation ---------
 # exclude snps which cause a silent mutation
-cds_aa_range <- Biostrings::translate(Biostrings::DNAStringSet(cds_man_minus))[[1]][range]
+cds_aa_range <- Biostrings::translate(Biostrings::DNAStringSet(cds_man_minus))[[1]]#[range]
 fcmr_prot2 <- lapply(fcmr_prot, function(x) {
-  if (as.character(x) == as.character(cds_aa_range)) {
-    return(NULL)
-  } else {
-    return(x)
-  }
+    if (as.character(x) == as.character(cds_aa_range)) {
+        return(NULL)
+    } else {
+        return(x)
+    }
 })
 fcmr_prot2 <- fcmr_prot2[which(!sapply(fcmr_prot2, is.null))]
 
@@ -217,4 +219,65 @@ ggmsa::ggmsa(msa = fcmr_prot2_mult_aln,
              ref = "cds",
              use_dot = T)
 
+## manual ggplotting
+library(ggplot2)
+out3 <- purrr::map(as.list(fcmr_prot2_mult_aln), as.character)
+out4 <- purrr::flatten(purrr::map(out3, strsplit, split = ""))
+out5 <- purrr::map_dfr(out4, function(x) {
+    stack(setNames(x, seq(1, length(x))))
+}, .id = "rsid")
+out6 <-
+    out5 %>%
+    tidyr::pivot_wider(names_from = rsid, values_from = values) %>%
+    dplyr::mutate(dplyr::across(.cols = unique(out5$rsid)[which(unique(out5$rsid) != "cds")],
+                                .fns = ~ ifelse(.x == cds, ".", .x))) %>%
+    tidyr::pivot_longer(cols = unique(out5$rsid), names_to = "rsid", values_to = "aa") %>%
+    dplyr::mutate(rsid = factor(rsid, levels = unique(out5$rsid)))
 
+
+AA_cols <- setNames(ggmsa:::scheme_AA$Chemistry_AA, rownames(ggmsa:::scheme_AA))
+AA_cols <- c(AA_cols, "*" = "grey80")
+p <- ggplot(out6, aes(x = ind, y = rsid, label = aa)) +
+    geom_tile(aes(fill = aa), color = "black") +
+    theme_bw() +
+    theme(axis.title = element_blank(), legend.position = "none", panel.border = element_blank(),
+          axis.ticks = element_blank()) +
+    geom_text() +
+    scale_x_discrete(breaks = c(10,20,30)) +
+    scale_y_discrete(limits = rev) +
+    scale_fill_manual(values = AA_cols, na.value = "white") +
+    coord_fixed(ratio = nlevels(out6$ind)/nlevels(out6$rsid)*0.8)
+#ggsave(p, filename = paste0("alignment_30aa.png"), device = "png", path = getwd(), dpi = "retina", width = 5*nlevels(out6$ind)/nlevels(out6$rsid)*0.8, height = 5)
+ggsave(p, filename = paste0("alignment_all_aa.png"), device = "png", path = getwd(), dpi = "retina", width = 30*nlevels(out6$ind)/nlevels(out6$rsid)*0.8, height = 30)
+
+
+
+## ---- for github (ggmsa only) -------
+aln <- DECIPHER::AlignSeqs(Biostrings::AAStringSet(named_protein_chr_vector), verbose = F)
+out <- purrr::map(as.list(aln), as.character)
+out <- purrr::flatten(purrr::map(out, strsplit, split = ""))
+out <- purrr::map_dfr(out, function(x) {
+    stack(setNames(x, seq(1, length(x))))
+}, .id = "protein_name")
+
+ref_protein_name <- "ref"
+out <-
+    out %>%
+    tidyr::pivot_wider(names_from = protein_name, values_from = values) %>%
+    dplyr::mutate(dplyr::across(.cols = unique(out$protein_name)[which(unique(out$protein_name) != ref_protein_name)],
+                                .fns = ~ ifelse(.x == !!sym(ref_protein_name), ".", .x))) %>%
+    tidyr::pivot_longer(cols = unique(out$protein_name), names_to = "protein_name", values_to = "aa") %>%
+    dplyr::mutate(protein_name = factor(protein_name, levels = unique(out$protein_name)))
+
+AA_cols <- setNames(ggmsa:::scheme_AA$Chemistry_AA, rownames(ggmsa:::scheme_AA))
+AA_cols <- c(AA_cols, "*" = "grey80")
+p <- ggplot(out, aes(x = ind, y = protein_name, label = aa)) +
+    geom_tile(aes(fill = aa), color = "black") +
+    theme_bw() +
+    theme(axis.title = element_blank(), legend.position = "none", panel.border = element_blank(),
+          axis.ticks = element_blank()) +
+    geom_text() +
+    scale_x_discrete(breaks = c(10,20,30)) +
+    scale_y_discrete(limits = rev) +
+    scale_fill_manual(values = AA_cols, na.value = "white") +
+    coord_fixed(ratio = nlevels(out$ind)/nlevels(out$protein_name)*0.8)
